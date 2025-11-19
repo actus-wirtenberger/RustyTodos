@@ -8,6 +8,8 @@ pub struct Todo {
     pub due_date: Option<String>,
     pub created_date: String,
     pub done: bool,
+    #[serde(default)]
+    pub priority: f64,
 }
 
 impl Todo {
@@ -17,6 +19,7 @@ impl Todo {
             due_date,
             created_date: Local::now().format("%Y-%m-%d").to_string(),
             done: false,
+            priority: 0.0,
         }
     }
 }

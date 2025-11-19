@@ -5,7 +5,7 @@ use chrono::{
     Datelike, Duration as Dur, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Timelike,
     Weekday,
 };
-use crossterm::event::{self, Event as CEvent, KeyCode, KeyEventKind};
+use crossterm::event::{self, Event as CEvent, KeyCode, KeyEventKind, KeyModifiers};
 use ratatui::{
     Terminal,
     backend::Backend,
@@ -42,12 +42,16 @@ pub fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Res
                             app.search_query.clear();
                         }
                         KeyCode::Down => {
-                            if app.selected < filtered_todos(app).len().saturating_sub(1) {
+                            if key.modifiers.contains(KeyModifiers::SHIFT) {
+                                app.move_todo_down();
+                            } else if app.selected < filtered_todos(app).len().saturating_sub(1) {
                                 app.selected += 1;
                             }
                         }
                         KeyCode::Up => {
-                            if app.selected > 0 {
+                            if key.modifiers.contains(KeyModifiers::SHIFT) {
+                                app.move_todo_up();
+                            } else if app.selected > 0 {
                                 app.selected -= 1;
                             }
                         }
@@ -134,13 +138,19 @@ fn filtered_todos(app: &App) -> Vec<&crate::todo::Todo> {
             .collect()
     };
     
-    // Sort by due date (earliest first, None at the end)
+    // Sort by due date first, then by priority
     todos.sort_by(|a, b| {
         match (&a.due_date, &b.due_date) {
-            (Some(a_date), Some(b_date)) => a_date.cmp(b_date),
+            (Some(a_date), Some(b_date)) => {
+                if a_date == b_date {
+                    a.priority.partial_cmp(&b.priority).unwrap_or(std::cmp::Ordering::Equal)
+                } else {
+                    a_date.cmp(b_date)
+                }
+            }
             (Some(_), None) => std::cmp::Ordering::Less,
             (None, Some(_)) => std::cmp::Ordering::Greater,
-            (None, None) => std::cmp::Ordering::Equal,
+            (None, None) => a.priority.partial_cmp(&b.priority).unwrap_or(std::cmp::Ordering::Equal),
         }
     });
     
@@ -183,6 +193,8 @@ fn ui<B: Backend>(f: &mut ratatui::Frame<B>, app: &App) {
         Span::raw(" to delete, "),
         Span::styled("/", Style::default().add_modifier(Modifier::BOLD)),
         Span::raw(" to search, "),
+        Span::styled("Shift+↑/↓", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(" to reorder, "),
         Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
         Span::raw(" to quit."),
     ]))
