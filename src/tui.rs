@@ -118,7 +118,7 @@ pub fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Res
 }
 
 fn filtered_todos(app: &App) -> Vec<&crate::todo::Todo> {
-    if app.search_query.is_empty() {
+    let mut todos: Vec<&crate::todo::Todo> = if app.search_query.is_empty() {
         app.todos.iter().collect()
     } else {
         let q = app.search_query.to_lowercase();
@@ -132,7 +132,19 @@ fn filtered_todos(app: &App) -> Vec<&crate::todo::Todo> {
                         .unwrap_or(false)
             })
             .collect()
-    }
+    };
+    
+    // Sort by due date (earliest first, None at the end)
+    todos.sort_by(|a, b| {
+        match (&a.due_date, &b.due_date) {
+            (Some(a_date), Some(b_date)) => a_date.cmp(b_date),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => std::cmp::Ordering::Equal,
+        }
+    });
+    
+    todos
 }
 
 fn ui<B: Backend>(f: &mut ratatui::Frame<B>, app: &App) {
