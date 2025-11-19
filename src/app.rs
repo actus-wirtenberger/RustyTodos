@@ -114,16 +114,35 @@ impl App {
     }
 
     pub fn delete_todo(&mut self) {
-        if !self.todos.is_empty() {
-            self.todos.remove(self.selected);
-            if self.selected > 0 {
-                self.selected -= 1;
-            }
+        if self.todos.is_empty() {
+            return;
+        }
+
+        let filtered_indices = self.get_filtered_indices();
+        if self.selected >= filtered_indices.len() {
+            return;
+        }
+
+        let actual_idx = filtered_indices[self.selected];
+        self.todos.remove(actual_idx);
+        
+        if self.selected > 0 {
+            self.selected -= 1;
         }
     }
 
     pub fn mark_done(&mut self) {
-        if let Some(todo) = self.todos.get_mut(self.selected) {
+        if self.todos.is_empty() {
+            return;
+        }
+
+        let filtered_indices = self.get_filtered_indices();
+        if self.selected >= filtered_indices.len() {
+            return;
+        }
+
+        let actual_idx = filtered_indices[self.selected];
+        if let Some(todo) = self.todos.get_mut(actual_idx) {
             todo.done = !todo.done;
         }
     }
